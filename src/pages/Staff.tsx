@@ -30,6 +30,17 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { z } from "zod";
+
+const staffSchema = z.object({
+  name: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
+  email: z.string().trim().email("Email inválido").max(255, "Email muito longo").optional().or(z.literal("")),
+  phone: z.string().regex(/^[+]?[0-9\s()-]{7,20}$/, "Telefone inválido").optional().or(z.literal("")),
+  position: z.string().trim().min(2, "Cargo deve ter pelo menos 2 caracteres").max(100, "Cargo muito longo"),
+  department_id: z.string().uuid("Departamento inválido").optional().or(z.literal("")),
+  salary: z.number().positive("Salário deve ser positivo").max(1000000, "Salário muito alto").optional(),
+  status: z.enum(["active", "inactive", "terminated"], { errorMap: () => ({ message: "Status inválido" }) }),
+});
 
 interface StaffMember {
   id: string;
@@ -91,15 +102,31 @@ const Staff = () => {
     setLoading(true);
 
     try {
-      const data = {
-        ...formData,
-        salary: formData.salary ? parseFloat(formData.salary) : null,
+      // Validate input data
+      const validatedData = staffSchema.parse({
+        name: formData.name,
+        email: formData.email || "",
+        phone: formData.phone || "",
+        position: formData.position,
+        department_id: formData.department_id || "",
+        salary: formData.salary ? parseFloat(formData.salary) : undefined,
+        status: formData.status,
+      });
+
+      const staffData = {
+        name: validatedData.name,
+        email: validatedData.email || null,
+        phone: validatedData.phone || null,
+        position: validatedData.position,
+        department_id: validatedData.department_id || null,
+        salary: validatedData.salary || null,
+        status: validatedData.status,
       };
 
       if (editingStaff) {
         const { error } = await supabase
           .from("staff")
-          .update(data)
+          .update(staffData)
           .eq("id", editingStaff.id);
 
         if (error) throw error;
@@ -109,7 +136,7 @@ const Staff = () => {
           description: "O funcionário foi atualizado com sucesso.",
         });
       } else {
-        const { error } = await supabase.from("staff").insert([data]);
+        const { error } = await supabase.from("staff").insert([staffData]);
 
         if (error) throw error;
 
@@ -123,11 +150,19 @@ const Staff = () => {
       resetForm();
       loadData();
     } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Erro de validação",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }

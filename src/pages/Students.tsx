@@ -30,6 +30,16 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { z } from "zod";
+
+const studentSchema = z.object({
+  name: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
+  email: z.string().trim().email("Email inválido").max(255, "Email muito longo").optional().or(z.literal("")),
+  phone: z.string().regex(/^[+]?[0-9\s()-]{7,20}$/, "Telefone inválido").optional().or(z.literal("")),
+  course: z.string().max(100, "Curso muito longo").optional().or(z.literal("")),
+  department_id: z.string().uuid("Departamento inválido").optional().or(z.literal("")),
+  status: z.enum(["active", "inactive", "graduated"], { errorMap: () => ({ message: "Status inválido" }) }),
+});
 
 interface Student {
   id: string;
@@ -89,10 +99,29 @@ const Students = () => {
     setLoading(true);
 
     try {
+      // Validate input data
+      const validatedData = studentSchema.parse({
+        name: formData.name,
+        email: formData.email || "",
+        phone: formData.phone || "",
+        course: formData.course || "",
+        department_id: formData.department_id || "",
+        status: formData.status,
+      });
+
+      const studentData = {
+        name: validatedData.name,
+        email: validatedData.email || null,
+        phone: validatedData.phone || null,
+        course: validatedData.course || null,
+        department_id: validatedData.department_id || null,
+        status: validatedData.status,
+      };
+
       if (editingStudent) {
         const { error } = await supabase
           .from("students")
-          .update(formData)
+          .update(studentData)
           .eq("id", editingStudent.id);
 
         if (error) throw error;
@@ -102,7 +131,7 @@ const Students = () => {
           description: "O aluno foi atualizado com sucesso.",
         });
       } else {
-        const { error } = await supabase.from("students").insert([formData]);
+        const { error } = await supabase.from("students").insert([studentData]);
 
         if (error) throw error;
 
@@ -116,11 +145,19 @@ const Students = () => {
       resetForm();
       loadData();
     } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Erro de validação",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
