@@ -12,14 +12,17 @@ import {
   GraduationCap,
   Menu,
   X,
+  UserCog,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { role, loading: roleLoading, isDirector } = useUserRole();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -46,13 +49,32 @@ const Layout = () => {
     navigate("/auth");
   };
 
-  const navItems = [
-    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { path: "/students", icon: Users, label: "Alunos" },
-    { path: "/staff", icon: Briefcase, label: "Funcionários" },
-    { path: "/finances", icon: DollarSign, label: "Finanças" },
-    { path: "/recommendations", icon: Lightbulb, label: "IA Recomendações" },
+  const allNavItems = [
+    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", requiredRole: null },
+    { path: "/students", icon: Users, label: "Alunos", requiredRole: null },
+    { path: "/staff", icon: Briefcase, label: "Funcionários", requiredRole: null },
+    { path: "/finances", icon: DollarSign, label: "Finanças", requiredRole: "director" as const },
+    { path: "/recommendations", icon: Lightbulb, label: "IA Recomendações", requiredRole: "director" as const },
+    { path: "/users", icon: UserCog, label: "Utilizadores", requiredRole: "director" as const },
   ];
+
+  const navItems = allNavItems.filter(item => {
+    if (!item.requiredRole) return true;
+    return item.requiredRole === "director" && isDirector;
+  });
+
+  if (roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">A carregar...</p>
+      </div>
+    );
+  }
+
+  if (!role) {
+    navigate("/auth");
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
