@@ -25,15 +25,18 @@ const Layout = () => {
   const { role, loading: roleLoading, isDirector } = useUserRole();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        navigate("/auth");
+        navigate("/auth", { replace: true });
       }
-    });
+    };
+
+    checkAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
-        navigate("/auth");
+        navigate("/auth", { replace: true });
       }
     });
 
@@ -69,11 +72,6 @@ const Layout = () => {
         <p className="text-muted-foreground">A carregar...</p>
       </div>
     );
-  }
-
-  if (!role) {
-    navigate("/auth");
-    return null;
   }
 
   return (

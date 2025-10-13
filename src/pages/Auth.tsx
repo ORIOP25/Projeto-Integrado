@@ -19,11 +19,22 @@ const Auth = () => {
   const [signupPassword, setSignupPassword] = useState("");
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/dashboard");
+        navigate("/dashboard", { replace: true });
+      }
+    };
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && event === 'SIGNED_IN') {
+        navigate("/dashboard", { replace: true });
       }
     });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -41,15 +52,14 @@ const Auth = () => {
         description: error.message,
         variant: "destructive",
       });
+      setLoading(false);
     } else {
       toast({
         title: "Login bem-sucedido",
         description: "Bem-vindo de volta!",
       });
-      navigate("/dashboard");
+      // Redirect handled by onAuthStateChange
     }
-
-    setLoading(false);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -70,15 +80,14 @@ const Auth = () => {
         description: error.message,
         variant: "destructive",
       });
+      setLoading(false);
     } else {
       toast({
         title: "Conta criada",
         description: "A sua conta foi criada com sucesso!",
       });
-      navigate("/dashboard");
+      // Redirect handled by onAuthStateChange
     }
-
-    setLoading(false);
   };
 
   return (
