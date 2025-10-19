@@ -12,6 +12,7 @@ import Staff from "./pages/Staff";
 import Finances from "./pages/Finances";
 import Recommendations from "./pages/Recommendations";
 import NotFound from "./pages/NotFound";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -25,11 +26,11 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route element={<Layout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/students" element={<Students />} />
-            <Route path="/staff" element={<Staff />} />
-            <Route path="/finances" element={<Finances />} />
-            <Route path="/recommendations" element={<Recommendations />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/students" element={<ProtectedRoute><Students /></ProtectedRoute>} />
+            <Route path="/staff" element={<ProtectedRoute><Staff /></ProtectedRoute>} />
+            <Route path="/finances" element={<ProtectedRoute requireAdmin><Finances /></ProtectedRoute>} />
+            <Route path="/recommendations" element={<ProtectedRoute requireAdmin><Recommendations /></ProtectedRoute>} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

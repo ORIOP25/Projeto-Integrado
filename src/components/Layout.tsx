@@ -14,12 +14,14 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { role, loading, isAdmin } = useUserRole();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -46,13 +48,16 @@ const Layout = () => {
     navigate("/auth");
   };
 
-  const navItems = [
-    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { path: "/students", icon: Users, label: "Alunos" },
-    { path: "/staff", icon: Briefcase, label: "Funcionários" },
-    { path: "/finances", icon: DollarSign, label: "Finanças" },
-    { path: "/recommendations", icon: Lightbulb, label: "IA Recomendações" },
+  const allNavItems = [
+    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", adminOnly: false },
+    { path: "/students", icon: Users, label: "Alunos", adminOnly: false },
+    { path: "/staff", icon: Briefcase, label: "Funcionários", adminOnly: false },
+    { path: "/finances", icon: DollarSign, label: "Finanças", adminOnly: true },
+    { path: "/recommendations", icon: Lightbulb, label: "IA Recomendações", adminOnly: true },
   ];
+
+  // Filter navigation items based on user role
+  const navItems = allNavItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
     <div className="min-h-screen bg-background">
