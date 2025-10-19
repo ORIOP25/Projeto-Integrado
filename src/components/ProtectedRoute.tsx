@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -9,31 +10,41 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
-  const { role, loading, isAdmin } = useUserRole();
+  const { role, loading: roleLoading, isAdmin } = useUserRole();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!loading) {
-      if (!role) {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+      
+      if (!session) {
         toast({
           title: "Acesso negado",
           description: "Você precisa fazer login para acessar esta página.",
           variant: "destructive",
         });
         navigate("/auth", { replace: true });
-      } else if (requireAdmin && !isAdmin) {
-        toast({
-          title: "Acesso negado",
-          description: "Você não tem permissão para acessar esta página.",
-          variant: "destructive",
-        });
-        navigate("/dashboard", { replace: true });
       }
-    }
-  }, [role, loading, isAdmin, requireAdmin, navigate, toast]);
+    };
 
-  if (loading) {
+    checkAuth();
+  }, [navigate, toast]);
+
+  useEffect(() => {
+    if (isAuthenticated && !roleLoading && requireAdmin && !isAdmin) {
+      toast({
+        title: "Acesso negado",
+        description: "Você não tem permissão para acessar esta página.",
+        variant: "destructive",
+      });
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, roleLoading, requireAdmin, isAdmin, navigate, toast]);
+
+  if (isAuthenticated === null || roleLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -41,7 +52,7 @@ export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRout
     );
   }
 
-  if (!role || (requireAdmin && !isAdmin)) {
+  if (!isAuthenticated || (requireAdmin && !isAdmin)) {
     return null;
   }
 
