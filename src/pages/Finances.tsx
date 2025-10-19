@@ -31,15 +31,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { z } from "zod";
-
-const transactionSchema = z.object({
-  type: z.enum(["revenue", "expense"], { errorMap: () => ({ message: "Tipo inválido" }) }),
-  category: z.string().trim().min(2, "Categoria deve ter pelo menos 2 caracteres").max(50, "Categoria muito longa"),
-  amount: z.number().positive("Valor deve ser positivo").max(1000000, "Valor muito alto"),
-  description: z.string().max(500, "Descrição muito longa").optional().or(z.literal("")),
-  transaction_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
-});
 
 interface Transaction {
   id: string;
@@ -90,27 +81,15 @@ const Finances = () => {
     setLoading(true);
 
     try {
-      // Validate input data
-      const validatedData = transactionSchema.parse({
-        type: formData.type,
-        category: formData.category,
+      const data = {
+        ...formData,
         amount: parseFloat(formData.amount),
-        description: formData.description || "",
-        transaction_date: formData.transaction_date,
-      });
-
-      const transactionData = {
-        type: validatedData.type,
-        category: validatedData.category,
-        amount: validatedData.amount,
-        description: validatedData.description || null,
-        transaction_date: validatedData.transaction_date,
       };
 
       if (editingTransaction) {
         const { error } = await supabase
           .from("financial_transactions")
-          .update(transactionData)
+          .update(data)
           .eq("id", editingTransaction.id);
 
         if (error) throw error;
@@ -120,7 +99,7 @@ const Finances = () => {
           description: "A transação foi atualizada com sucesso.",
         });
       } else {
-        const { error } = await supabase.from("financial_transactions").insert([transactionData]);
+        const { error } = await supabase.from("financial_transactions").insert([data]);
 
         if (error) throw error;
 
@@ -134,19 +113,11 @@ const Finances = () => {
       resetForm();
       loadTransactions();
     } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        toast({
-          title: "Erro de validação",
-          description: error.errors[0].message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Erro",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
