@@ -43,6 +43,7 @@ interface StaffMember {
   hire_date: string;
   status: string;
   user_id: string | null;
+  role?: string | null;
 }
 
 interface Department {
@@ -81,7 +82,24 @@ const Staff = () => {
         supabase.from("departments").select("*").order("name"),
       ]);
 
-      if (staffRes.data) setStaff(staffRes.data);
+      if (staffRes.data) {
+        // Load roles for each staff member
+        const staffWithRoles = await Promise.all(
+          staffRes.data.map(async (member) => {
+            if (member.user_id) {
+              const { data: roleData } = await supabase
+                .from("user_roles")
+                .select("role")
+                .eq("user_id", member.user_id)
+                .maybeSingle();
+              
+              return { ...member, role: roleData?.role || null };
+            }
+            return { ...member, role: null };
+          })
+        );
+        setStaff(staffWithRoles);
+      }
       if (departmentsRes.data) setDepartments(departmentsRes.data);
     } catch (error) {
       console.error("Error loading data:", error);
@@ -248,6 +266,56 @@ const Staff = () => {
     setEditingStaff(null);
   };
 
+  const handleRoleChange = async (staffMember: StaffMember, newRole: string) => {
+    if (!staffMember.user_id) {
+      toast({
+        title: "Erro",
+        description: "Este funcionário não tem conta de usuário associada.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Check if user already has a role
+      const { data: existingRole } = await supabase
+        .from("user_roles")
+        .select("*")
+        .eq("user_id", staffMember.user_id)
+        .maybeSingle();
+
+      if (existingRole) {
+        // Update existing role
+        const { error } = await supabase
+          .from("user_roles")
+          .update({ role: newRole as any })
+          .eq("user_id", staffMember.user_id);
+
+        if (error) throw error;
+      } else {
+        // Insert new role
+        const { error } = await supabase
+          .from("user_roles")
+          .insert([{ user_id: staffMember.user_id, role: newRole as any }]);
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Role atualizada",
+        description: `Role de ${staffMember.name} alterada para ${newRole === "director" ? "Global Admin" : newRole === "admin" ? "Admin" : "Utilizador"}.`,
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -410,6 +478,7 @@ const Staff = () => {
                   <TableHead>Email</TableHead>
                   <TableHead>Cargo</TableHead>
                   {isDirector && <TableHead>Salário</TableHead>}
+                  {isDirector && <TableHead>Permissão</TableHead>}
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -417,7 +486,7 @@ const Staff = () => {
               <TableBody>
                 {staff.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isDirector ? 6 : 5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={isDirector ? 7 : 5} className="text-center text-muted-foreground">
                       Nenhum funcionário registado
                     </TableCell>
                   </TableRow>
@@ -432,6 +501,27 @@ const Staff = () => {
                           {member.salary
                             ? `€${member.salary.toLocaleString("pt-PT", { minimumFractionDigits: 2 })}`
                             : "-"}
+                        </TableCell>
+                      )}
+                      {isDirector && (
+                        <TableCell>
+                          {member.user_id ? (
+                            <Select
+                              value={member.role || "user"}
+                              onValueChange={(value) => handleRoleChange(member, value)}
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="user">Utilizador</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="director">Global Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">Sem conta</span>
+                          )}
                         </TableCell>
                       )}
                       <TableCell>
