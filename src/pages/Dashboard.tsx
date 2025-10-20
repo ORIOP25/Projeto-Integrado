@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Briefcase, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface DashboardStats {
   totalStudents: number;
@@ -15,6 +16,7 @@ interface DashboardStats {
 const Dashboard = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const { isDirector } = useUserRole();
 
   useEffect(() => {
     loadStats();
@@ -70,7 +72,7 @@ const Dashboard = () => {
     );
   }
 
-  const statCards = [
+  const baseStatCards = [
     {
       title: "Total de Alunos",
       value: stats?.totalStudents || 0,
@@ -85,6 +87,9 @@ const Dashboard = () => {
       color: "text-primary",
       bgColor: "bg-primary/10",
     },
+  ];
+
+  const financialStatCards = [
     {
       title: "Receitas",
       value: `€${stats?.totalRevenue.toLocaleString("pt-PT", { minimumFractionDigits: 2 })}`,
@@ -107,6 +112,8 @@ const Dashboard = () => {
       bgColor: (stats?.balance || 0) >= 0 ? "bg-success/10" : "bg-destructive/10",
     },
   ];
+
+  const statCards = isDirector ? [...baseStatCards, ...financialStatCards] : baseStatCards;
 
   return (
     <div>

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   Table,
   TableBody,
@@ -56,6 +57,7 @@ const Staff = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const { toast } = useToast();
+  const { isDirector } = useUserRole();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -348,16 +350,18 @@ const Staff = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="salary">Salário (€)</Label>
-                <Input
-                  id="salary"
-                  type="number"
-                  step="0.01"
-                  value={formData.salary}
-                  onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
-                />
-              </div>
+              {isDirector && (
+                <div className="space-y-2">
+                  <Label htmlFor="salary">Salário (€)</Label>
+                  <Input
+                    id="salary"
+                    type="number"
+                    step="0.01"
+                    value={formData.salary}
+                    onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="status">Estado</Label>
                 <Select
@@ -405,7 +409,7 @@ const Staff = () => {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Cargo</TableHead>
-                  <TableHead>Salário</TableHead>
+                  {isDirector && <TableHead>Salário</TableHead>}
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -413,7 +417,7 @@ const Staff = () => {
               <TableBody>
                 {staff.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={isDirector ? 6 : 5} className="text-center text-muted-foreground">
                       Nenhum funcionário registado
                     </TableCell>
                   </TableRow>
@@ -423,11 +427,13 @@ const Staff = () => {
                       <TableCell className="font-medium">{member.name}</TableCell>
                       <TableCell>{member.email || "-"}</TableCell>
                       <TableCell>{member.position}</TableCell>
-                      <TableCell>
-                        {member.salary
-                          ? `€${member.salary.toLocaleString("pt-PT", { minimumFractionDigits: 2 })}`
-                          : "-"}
-                      </TableCell>
+                      {isDirector && (
+                        <TableCell>
+                          {member.salary
+                            ? `€${member.salary.toLocaleString("pt-PT", { minimumFractionDigits: 2 })}`
+                            : "-"}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
