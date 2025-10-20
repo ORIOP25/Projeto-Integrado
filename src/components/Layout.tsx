@@ -12,7 +12,18 @@ import {
   GraduationCap,
   Menu,
   X,
+  UserCircle,
+  ChevronDown,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -22,11 +33,32 @@ const Layout = () => {
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { role, loading, isAdmin } = useUserRole();
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [userName, setUserName] = useState<string>("");
 
   useEffect(() => {
+    const loadUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email || "");
+        // Try to get name from staff table
+        const { data: staffData } = await supabase
+          .from("staff")
+          .select("name")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        setUserName(staffData?.name || user.email?.split("@")[0] || "Usuário");
+      }
+    };
+
+    loadUserData();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         navigate("/auth");
+      } else if (event === 'SIGNED_IN') {
+        loadUserData();
       }
     });
 
@@ -92,10 +124,35 @@ const Layout = () => {
             })}
           </nav>
 
-          <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
-            <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">Sair</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="gap-2 h-auto py-2 px-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                    {userName.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="hidden md:flex flex-col items-start">
+                  <span className="text-sm font-medium">{userName}</span>
+                  <span className="text-xs text-muted-foreground">{role === "director" ? "Global Admin" : role === "admin" ? "Admin" : "Utilizador"}</span>
+                </div>
+                <ChevronDown className="h-4 w-4 hidden md:block" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{userName}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Terminar Sessão</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Mobile Navigation */}
