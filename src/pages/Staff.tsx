@@ -41,6 +41,7 @@ interface StaffMember {
   salary: number | null;
   hire_date: string;
   status: string;
+  user_id: string | null;
 }
 
 interface Department {
@@ -64,6 +65,7 @@ const Staff = () => {
     department_id: "",
     salary: "",
     status: "active",
+    password: "",
   });
 
   useEffect(() => {
@@ -91,12 +93,18 @@ const Staff = () => {
     setLoading(true);
 
     try {
-      const data = {
-        ...formData,
-        salary: formData.salary ? parseFloat(formData.salary) : null,
-      };
-
       if (editingStaff) {
+        // Update existing staff
+        const data = {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          position: formData.position,
+          department_id: formData.department_id || null,
+          salary: formData.salary ? parseFloat(formData.salary) : null,
+          status: formData.status,
+        };
+
         const { error } = await supabase
           .from("staff")
           .update(data)
@@ -109,13 +117,66 @@ const Staff = () => {
           description: "O funcionário foi atualizado com sucesso.",
         });
       } else {
-        const { error } = await supabase.from("staff").insert([data]);
+        // Create new staff member with user account
+        if (!formData.email) {
+          throw new Error("Email é obrigatório para criar credenciais de login");
+        }
 
-        if (error) throw error;
+        if (!formData.password || formData.password.length < 6) {
+          throw new Error("A senha deve ter pelo menos 6 caracteres");
+        }
+
+        // 1. Create user in auth.users
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              full_name: formData.name,
+            },
+          },
+        });
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error("Falha ao criar usuário");
+
+        // 2. Create staff record linked to user
+        const staffData = {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          position: formData.position,
+          department_id: formData.department_id || null,
+          salary: formData.salary ? parseFloat(formData.salary) : null,
+          status: formData.status,
+          user_id: authData.user.id,
+        };
+
+        const { error: staffError } = await supabase.from("staff").insert([staffData]);
+
+        if (staffError) {
+          // If staff creation fails, we should clean up the auth user
+          console.error("Failed to create staff record:", staffError);
+          throw new Error("Falha ao criar registro de funcionário");
+        }
+
+        // 3. Assign 'user' role to the new user
+        const { error: roleError } = await supabase.from("user_roles").insert([
+          {
+            user_id: authData.user.id,
+            role: "user",
+          },
+        ]);
+
+        if (roleError) {
+          console.error("Failed to assign role:", roleError);
+          // Continue anyway - admin can assign role later
+        }
 
         toast({
           title: "Funcionário criado",
-          description: "O funcionário foi criado com sucesso.",
+          description: `O funcionário foi criado com sucesso. Credenciais de login criadas para ${formData.email}`,
         });
       }
 
@@ -143,6 +204,7 @@ const Staff = () => {
       department_id: staffMember.department_id || "",
       salary: staffMember.salary?.toString() || "",
       status: staffMember.status,
+      password: "", // Not used when editing
     });
     setDialogOpen(true);
   };
@@ -179,6 +241,7 @@ const Staff = () => {
       department_id: "",
       salary: "",
       status: "active",
+      password: "",
     });
     setEditingStaff(null);
   };
@@ -217,14 +280,37 @@ const Staff = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email {!editingStaff && "*"}</Label>
                 <Input
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required={!editingStaff}
+                  disabled={editingStaff !== null}
                 />
+                {!editingStaff && (
+                  <p className="text-xs text-muted-foreground">
+                    Usado para criar credenciais de login
+                  </p>
+                )}
               </div>
+              {!editingStaff && (
+                <div className="space-y-2">
+                  <Label htmlFor="password">Senha Inicial *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    minLength={6}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Mínimo 6 caracteres. O funcionário poderá alterar após o primeiro login.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefone</Label>
                 <Input
