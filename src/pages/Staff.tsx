@@ -276,6 +276,16 @@ const Staff = () => {
       return;
     }
 
+    // Protect the super admin account
+    if (staffMember.email === "admin@escola.pt" && newRole !== "global_admin") {
+      toast({
+        title: "Operação não permitida",
+        description: "O role do super admin não pode ser alterado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // Check if user already has a role
       const { data: existingRole } = await supabase
@@ -506,18 +516,25 @@ const Staff = () => {
                       {isGlobalAdmin && (
                         <TableCell>
                           {member.user_id ? (
-                            <Select
-                              value={member.role || "staff"}
-                              onValueChange={(value) => handleRoleChange(member, value)}
-                            >
-                              <SelectTrigger className="w-[140px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="staff">Staff</SelectItem>
-                                <SelectItem value="global_admin">Global Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            member.email === "admin@escola.pt" ? (
+                              <span className="text-sm font-medium flex items-center gap-1">
+                                <span className="inline-block w-2 h-2 rounded-full bg-primary"></span>
+                                Global Admin (Protegido)
+                              </span>
+                            ) : (
+                              <Select
+                                value={member.role || "staff"}
+                                onValueChange={(value) => handleRoleChange(member, value)}
+                              >
+                                <SelectTrigger className="w-[140px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="staff">Staff</SelectItem>
+                                  <SelectItem value="global_admin">Global Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )
                           ) : (
                             <span className="text-muted-foreground text-sm">Sem conta</span>
                           )}
