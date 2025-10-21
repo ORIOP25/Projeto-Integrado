@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
-  const { role, loading: roleLoading, isAdmin } = useUserRole();
+  const { role, loading: roleLoading, isGlobalAdmin } = useUserRole();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -34,7 +34,7 @@ export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRout
   }, [navigate, toast]);
 
   useEffect(() => {
-    if (isAuthenticated && !roleLoading && requireAdmin && !isAdmin) {
+    if (isAuthenticated && !roleLoading && requireAdmin && !isGlobalAdmin) {
       toast({
         title: "Acesso negado",
         description: "Você não tem permissão para acessar esta página.",
@@ -42,7 +42,7 @@ export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRout
       });
       navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, roleLoading, requireAdmin, isAdmin, navigate, toast]);
+  }, [isAuthenticated, roleLoading, requireAdmin, isGlobalAdmin, navigate, toast]);
 
   if (isAuthenticated === null || roleLoading) {
     return (
@@ -52,7 +52,7 @@ export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRout
     );
   }
 
-  if (!isAuthenticated || (requireAdmin && !isAdmin)) {
+  if (!isAuthenticated || (requireAdmin && !isGlobalAdmin)) {
     return null;
   }
 

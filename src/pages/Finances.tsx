@@ -41,12 +41,34 @@ interface Transaction {
   transaction_date: string;
 }
 
+import { useUserRole } from "@/hooks/useUserRole";
+
 const Finances = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const { toast } = useToast();
+  const { isGlobalAdmin } = useUserRole();
+
+  // Redirect if not global admin
+  if (!isGlobalAdmin) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Card className="max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h2 className="text-xl font-semibold mb-2">Acesso Restrito</h2>
+              <p className="text-muted-foreground">
+                Apenas Global Admins têm acesso à gestão financeira.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const [formData, setFormData] = useState({
     type: "revenue",

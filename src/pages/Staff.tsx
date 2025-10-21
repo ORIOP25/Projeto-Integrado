@@ -58,7 +58,7 @@ const Staff = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const { toast } = useToast();
-  const { isDirector } = useUserRole();
+  const { isGlobalAdmin } = useUserRole();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -181,11 +181,11 @@ const Staff = () => {
           throw new Error("Falha ao criar registro de funcionário");
         }
 
-        // 3. Assign 'user' role to the new user
+        // 3. Assign 'staff' role to the new user
         const { error: roleError } = await supabase.from("user_roles").insert([
           {
             user_id: authData.user.id,
-            role: "user",
+            role: "staff",
           },
         ]);
 
@@ -303,7 +303,7 @@ const Staff = () => {
 
       toast({
         title: "Role atualizada",
-        description: `Role de ${staffMember.name} alterada para ${newRole === "director" ? "Global Admin" : newRole === "admin" ? "Admin" : "Utilizador"}.`,
+        description: `Role de ${staffMember.name} alterada para ${newRole === "global_admin" ? "Global Admin" : "Staff"}.`,
       });
 
       loadData();
@@ -418,7 +418,7 @@ const Staff = () => {
                   </SelectContent>
                 </Select>
               </div>
-              {isDirector && (
+              {isGlobalAdmin && (
                 <div className="space-y-2">
                   <Label htmlFor="salary">Salário (€)</Label>
                   <Input
@@ -477,8 +477,8 @@ const Staff = () => {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Cargo</TableHead>
-                  {isDirector && <TableHead>Salário</TableHead>}
-                  {isDirector && <TableHead>Permissão</TableHead>}
+                  {isGlobalAdmin && <TableHead>Salário</TableHead>}
+                  {isGlobalAdmin && <TableHead>Permissão</TableHead>}
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -486,7 +486,7 @@ const Staff = () => {
               <TableBody>
                 {staff.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isDirector ? 7 : 5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={isGlobalAdmin ? 7 : 5} className="text-center text-muted-foreground">
                       Nenhum funcionário registado
                     </TableCell>
                   </TableRow>
@@ -496,27 +496,26 @@ const Staff = () => {
                       <TableCell className="font-medium">{member.name}</TableCell>
                       <TableCell>{member.email || "-"}</TableCell>
                       <TableCell>{member.position}</TableCell>
-                      {isDirector && (
+                      {isGlobalAdmin && (
                         <TableCell>
                           {member.salary
                             ? `€${member.salary.toLocaleString("pt-PT", { minimumFractionDigits: 2 })}`
                             : "-"}
                         </TableCell>
                       )}
-                      {isDirector && (
+                      {isGlobalAdmin && (
                         <TableCell>
                           {member.user_id ? (
                             <Select
-                              value={member.role || "user"}
+                              value={member.role || "staff"}
                               onValueChange={(value) => handleRoleChange(member, value)}
                             >
                               <SelectTrigger className="w-[140px]">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="user">Utilizador</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="director">Global Admin</SelectItem>
+                                <SelectItem value="staff">Staff</SelectItem>
+                                <SelectItem value="global_admin">Global Admin</SelectItem>
                               </SelectContent>
                             </Select>
                           ) : (

@@ -16,7 +16,7 @@ interface DashboardStats {
 const Dashboard = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const { isDirector } = useUserRole();
+  const { isGlobalAdmin } = useUserRole();
 
   useEffect(() => {
     loadStats();
@@ -113,7 +113,7 @@ const Dashboard = () => {
     },
   ];
 
-  const statCards = isDirector ? [...baseStatCards, ...financialStatCards] : baseStatCards;
+  const statCards = isGlobalAdmin ? [...baseStatCards, ...financialStatCards] : baseStatCards;
 
   return (
     <div>

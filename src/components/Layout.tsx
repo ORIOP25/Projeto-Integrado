@@ -32,7 +32,7 @@ const Layout = () => {
   const location = useLocation();
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { role, loading, isAdmin } = useUserRole();
+  const { role, isGlobalAdmin } = useUserRole();
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
 
@@ -83,7 +83,7 @@ const Layout = () => {
   ];
 
   // Filter navigation items based on user role
-  const navItems = allNavItems.filter(item => !item.adminOnly || isAdmin);
+  const navItems = allNavItems.filter(item => !item.adminOnly || isGlobalAdmin);
 
   return (
     <div className="min-h-screen bg-background">
@@ -134,7 +134,9 @@ const Layout = () => {
                 </Avatar>
                 <div className="hidden md:flex flex-col items-start">
                   <span className="text-sm font-medium">{userName}</span>
-                  <span className="text-xs text-muted-foreground">{role === "director" ? "Global Admin" : role === "admin" ? "Admin" : "Utilizador"}</span>
+                  <p className="text-xs text-muted-foreground">
+                    {role === "global_admin" ? "Global Admin" : "Staff"}
+                  </p>
                 </div>
                 <ChevronDown className="h-4 w-4 hidden md:block" />
               </Button>
